@@ -1,0 +1,3 @@
+GET /
+Host: httpbin.org
+user-agent: Custom C Code
