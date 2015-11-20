@@ -163,7 +163,7 @@ int main(int argc, char * argv[]) {
   printf("%s\n", encoded);
   */
 
-  BOOL win = CryptStringToBinary(pszOutBuffer, 0, CRYPT_STRING_BASE64 | CRYPT_STRING_STRICT,
+  BOOL win = CryptStringToBinary(pszOutBuffer, dwSize, CRYPT_STRING_BASE64,
                                  NULL, &size, NULL, NULL);
 
   /* allocate a RWX buffer */
@@ -177,7 +177,7 @@ int main(int argc, char * argv[]) {
   //base64_decodestate *b64state;
   //base64_decode_block(b64code, size, buffer, b64state);
 
-  win = CryptStringToBinary(pszOutBuffer, 0, CRYPT_STRING_BASE64 | CRYPT_STRING_STRICT,
+  win = CryptStringToBinary(pszOutBuffer, 0, CRYPT_STRING_BASE64,
                                  buffer, &size, NULL, NULL);
 
   if(!win) {
