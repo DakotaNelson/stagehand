@@ -63,10 +63,10 @@ int main(int argc, char * argv[]) {
 
   hSession = winhttp_init();
 
-  if (argc != 3) {
+  /*if (argc != 3) {
     printf("%s [host] [port]\n", argv[0]);
     exit(1);
-  }
+  }*/
 
   /* connect to target host */
   LPCWSTR host = L"www.pastebin.com";
