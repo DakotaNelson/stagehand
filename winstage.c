@@ -25,11 +25,11 @@
 //extern void api_call();
 
 /* a quick routine to quit and report why we quit */
-void punt(char * error) {
-  printf("Bad things: %s\n", error);
-  printf("Official error: %lu\n", GetLastError());
-  exit(1);
-}
+/* void punt(char * error) { */
+/*   printf("Bad things: %s\n", error); */
+/*   printf("Official error: %lu\n", GetLastError()); */
+/*   exit(1); */
+/* } */
 
 int main(int argc, char * argv[]) {
   BYTE * buffer;
@@ -62,13 +62,16 @@ int main(int argc, char * argv[]) {
   "push %%ebx\n\t"
   "push %%ebx\n\t"
   "push %[userAgent]\n\t"
-  "call *%[function]\n\t"
-  //"push $0x5BB31098\n\t"
-  //"call *%[api_call]\n\t"
-  "mov %%eax, %[hSession]"
-  : [hSession] "=r" (hSession)
+  "call *%[httpOpen]\n\t"
+  "mov %%eax, %%ecx"
+  :
   : [userAgent] "r" (userAgent),
-    [function] "r" (WinHttpOpen)
+    [host] "r" (host)
+    [httpOpen] "r" (WinHttpOpen)
+    [httpConnect] "r" (WinHttpConnect)
+    [httpOpenRequest] "r" (WinHttpOpenRequest)
+    [httpSendRequest] "r" (WinHttpSendRequest)
+    [httpReceiveResponse] "r" (WinHttpReceiveResponse)
   : "eax", "ebx"
   );
 

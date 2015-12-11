@@ -6,8 +6,8 @@ debug: stager-debug
 
 winstager:
 	i686-w64-mingw32-gcc \
-		-Os -s -Wall \
-		winstage.c \
+		-Os -s -pipe -fomit-frame-pointer -Wall \
+		winstage_compressed.c \
 		-lws2_32 -lwinhttp -lcrypt32 \
 		-o winstage.exe
 
