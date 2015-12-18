@@ -6,21 +6,18 @@ debug: stager-debug
 
 winstager:
 	i686-w64-mingw32-gcc \
-		-Os -s -pipe -fomit-frame-pointer -Wall \
+		-Os -s -Wall \
 		winstage-generated.c \
 		-lws2_32 -lwinhttp -lcrypt32 \
 		-o winstage.exe
 		strip winstage.exe
 		upx winstage.exe
 
-stager:
-	gcc -Wall stage.c -o stager
-
 stager-debug:
-	cppcheck winstage.c
+	cppcheck winstage-generated.c
 	i686-w64-mingw32-gcc \
 		-Wall -g \
-		winstage.c \
+		winstage-generated.c \
 		-lws2_32 -lwinhttp -lcrypt32 \
 		-o winstage-debug.exe
 
